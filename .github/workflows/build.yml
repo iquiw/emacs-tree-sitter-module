@@ -1,10 +1,9 @@
 name: Build
 
 on:
-  workflow_run:
-    workflows: [Update]
-    types:
-      - completed
+  push:
+    tags:
+      - 'emacs-30/*'
 
 jobs:
   build:
@@ -15,34 +14,23 @@ jobs:
     env:
       MSYSTEM: ${{ matrix.msystem }}
     outputs:
-      skip: ${{ steps.tag.outputs.skip-MINGW64 }}
       tag: ${{ steps.tag.outputs.tag-MINGW64 }}
       summary: ${{ steps.build.outputs.summary-MINGW64 }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
-      - name: Check if today's tag exists
+      - name: Extract tag
         id: tag
         run: |
-          today="$(date +%Y%m%d)"
-          tag="$(cat tag.txt)"
-          if [ "$tag" = "$today" ]; then
-          	echo "skip-${MSYSTEM}=false" >> "$GITHUB_OUTPUT"
-          	echo "skip=false" >> "$GITHUB_OUTPUT"
-          	echo "tag-${MSYSTEM}=$today" >> "$GITHUB_OUTPUT"
-          	echo "tag=$today" >> "$GITHUB_OUTPUT"
-          else
-          	echo "skip-${MSYSTEM}=true" >> "$GITHUB_OUTPUT"
-          	echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
+          tag=$(echo "${{ github.ref }}" | sed -e 's,refs/tags/emacs-30/,,')
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
         shell: 'C:/shells/msys2bash.cmd {0}'
 
       - name: Install dependencies
-        if: ${{ steps.tag.outputs.skip == 'false' }}
         run: |
           if [ "$MSYSTEM" = "MINGW64" ]; then
           	pacman -S --noconfirm --needed --noprogressbar make mingw-w64-x86_64-gcc
@@ -52,10 +40,9 @@ jobs:
         shell: 'C:/shells/msys2bash.cmd {0}'
 
       - name: Build tree-sitter modules
-        if: ${{ steps.tag.outputs.skip == 'false' }}
         id: build
         run: |
-          if [ "$MSYSTEM" = "MINGW64" ]; then
+         if [ "$MSYSTEM" = "MINGW64" ]; then
           	export PATH="/mingw64/bin:/C/Program Files/Git/bin:$PATH"
           else
           	export PATH="/ucrt64/bin:/C/Program Files/Git/bin:$PATH"
@@ -75,7 +62,6 @@ jobs:
         shell: 'C:/shells/msys2bash.cmd {0}'
 
       - name: Archive
-        if: ${{ steps.tag.outputs.skip == 'false' }}
         id: archive
         run: |
           if ($env:MSYSTEM -eq "MINGW64") {
@@ -93,7 +79,7 @@ jobs:
           gc $env:GITHUB_OUTPUT
 
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: package-${{ matrix.msystem }}
           path: |
@@ -106,7 +92,7 @@ jobs:
 
     steps:
       - name: Download packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: package-*
           merge-multiple: true
@@ -115,16 +101,13 @@ jobs:
         run: ls -R
 
       - name: Create Release
-        if: ${{ needs.build.outputs.skip == 'false' }}
         uses: ncipollo/release-action@v1
         with:
-          commit: '${{ github.sha }}'
-          tag: '${{ needs.build.outputs.tag }}'
           artifacts: "emacs-tree-sitter-module-*.zip,emacs-tree-sitter-module-*.zip.sha256"
           artifactContentType: application/octet-stream
-          name: tree-sitter module DLLs ${{ needs.build.outputs.tag }}
+          name: Emacs-30 tree-sitter module DLLs ${{ needs.build.outputs.tag }}
           body: |
-            tree-sitter module DLLs.
+            tree-sitter module DLLs for Emacs-30.
 
             ```
             ${{ needs.build.outputs.summary }}
