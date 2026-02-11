@@ -98,6 +98,7 @@ jobs:
           name: package-${{ matrix.msystem }}
           path: |
             emacs-tree-sitter-module-*.zip
+            emacs-tree-sitter-module-*.sha256
 
   release:
     runs-on: ubuntu-latest
