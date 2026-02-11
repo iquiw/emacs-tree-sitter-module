@@ -8,6 +8,7 @@
                css
                dockerfile
                elixir
+               gitattributes
                go
                gomod
                heex

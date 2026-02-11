@@ -12,6 +12,7 @@ tree-sitter language module DLLs for Emacs.
 - [css](https://github.com/tree-sitter/tree-sitter-css)
 - [dockerfile](https://github.com/camdencheek/tree-sitter-dockerfile)
 - [elixir](https://github.com/elixir-lang/tree-sitter-elixir)
+- [gitattributes](https://github.com/tree-sitter-grammars/tree-sitter-gitattributes)
 - [go](https://github.com/tree-sitter/tree-sitter-go)
 - [gomod](https://github.com/camdencheek/tree-sitter-go-mod)
 - [heex](https://github.com/phoenixframework/tree-sitter-heex)

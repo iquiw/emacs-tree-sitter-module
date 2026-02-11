@@ -76,3 +76,6 @@
 [submodule "phpdoc"]
 	path = phpdoc
 	url = https://github.com/claytonrcarter/tree-sitter-phpdoc
+[submodule "gitattributes"]
+	path = gitattributes
+	url = https://github.com/tree-sitter-grammars/tree-sitter-gitattributes
