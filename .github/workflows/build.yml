@@ -65,9 +65,9 @@ jobs:
         id: archive
         run: |
           if ($env:MSYSTEM -eq "MINGW64") {
-              $ARCHIVE = "emacs-tree-sitter-module-${{ steps.tag.outputs.tag }}.zip"
+              $ARCHIVE = "emacs30-tree-sitter-module-${{ steps.tag.outputs.tag }}.zip"
           } else {
-              $ARCHIVE = "emacs-tree-sitter-module-ucrt64-${{ steps.tag.outputs.tag }}.zip"
+              $ARCHIVE = "emacs30-tree-sitter-module-ucrt64-${{ steps.tag.outputs.tag }}.zip"
           }
 
           cd dist
@@ -83,7 +83,7 @@ jobs:
         with:
           name: package-${{ matrix.msystem }}
           path: |
-            emacs-tree-sitter-module-*.zip
+            emacs30-tree-sitter-module-*.zip
 
   release:
     runs-on: ubuntu-latest
@@ -103,7 +103,7 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "emacs-tree-sitter-module-*.zip,emacs-tree-sitter-module-*.zip.sha256"
+          artifacts: "emacs30-tree-sitter-module-*.zip,emacs30-tree-sitter-module-*.zip.sha256"
           artifactContentType: application/octet-stream
           name: Emacs-30 tree-sitter module DLLs ${{ needs.build.outputs.tag }}
           body: |
