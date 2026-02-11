@@ -1,6 +1,15 @@
-# tree-sitter module DLLs
+# tree-sitter module libraries
 
-tree-sitter language module DLLs for Emacs.
+tree-sitter language module libraries for Emacs.
+
+## Branches
+
+The main branch tracks the latest tree-sitter modules, which might be incompatible with Emacs versions.
+For the specific Emacs version, see the following branches.
+
+| Branch                                                                      | Release                                                                           |
+| ---                                                                         | ---                                                                               |
+| [Emacs-30](https://github.com/iquiw/emacs-tree-sitter-module/tree/emacs-30) | [Releases](https://github.com/iquiw/emacs-tree-sitter-module/releases?q=emacs-30) |
 
 ## Languages
 
