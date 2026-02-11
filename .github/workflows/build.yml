@@ -6,7 +6,46 @@ on:
       - 'emacs-30/*'
 
 jobs:
-  build:
+  build-netbsd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Extract submodules
+        id: submodule
+        run: |
+          submodules="$(git submodule status | awk '{print $2}' | tr '\n' ' ')"
+          echo "submodules=$submodules" >> "$GITHUB_OUTPUT"
+      - name: Build in NetBSD
+        uses: vmactions/netbsd-vm@v1
+        with:
+          arch: "x86_64"
+          release: "10.1"
+          run: |
+            PATH=/usr/pkg/bin:$PATH
+            cd $GITHUB_WORKSPACE
+            mkdir -p dist/licenses
+            for dir in ${{ steps.submodule.outputs.submodules }}
+            do
+            	cd "$dir"
+            	bash ../build.sh .
+                cd ..
+            done
+            cp language-manifest.txt dist/
+
+            cd dist
+            tag=$(echo "${{ github.ref }}" | sed -e 's,refs/tags/emacs-30/,,')
+            tar cvzf "../emacs30-tree-sitter-module-netbsd-x86_64-$tag.tar.gz" .
+      - name: Upload packages
+        uses: actions/upload-artifact@v6
+        with:
+          name: package-netbsd
+          path: |
+            emacs30-tree-sitter-module-netbsd-*.tar.gz
+
+  build-windows:
     runs-on: windows-latest
     strategy:
       matrix:
@@ -27,6 +66,7 @@ jobs:
         id: tag
         run: |
           tag=$(echo "${{ github.ref }}" | sed -e 's,refs/tags/emacs-30/,,')
+          echo "tag-${MSYSTEM}=$tag" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
         shell: 'C:/shells/msys2bash.cmd {0}'
 
@@ -84,11 +124,12 @@ jobs:
           name: package-${{ matrix.msystem }}
           path: |
             emacs30-tree-sitter-module-*.zip
+            emacs30-tree-sitter-module-*.sha256
 
   release:
     runs-on: ubuntu-latest
 
-    needs: [build]
+    needs: [build-netbsd, build-windows]
 
     steps:
       - name: Download packages
@@ -103,12 +144,12 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "emacs30-tree-sitter-module-*.zip,emacs30-tree-sitter-module-*.zip.sha256"
+          artifacts: "emacs30-tree-sitter-module-*"
           artifactContentType: application/octet-stream
-          name: Emacs-30 tree-sitter module DLLs ${{ needs.build.outputs.tag }}
+          name: Emacs-30 tree-sitter module ${{ needs.build-windows.outputs.tag }}
           body: |
-            tree-sitter module DLLs for Emacs-30.
+            tree-sitter module libraries for Emacs-30.
 
             ```
-            ${{ needs.build.outputs.summary }}
+            ${{ needs.build-windows.outputs.summary }}
             ```

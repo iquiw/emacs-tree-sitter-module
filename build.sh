@@ -51,7 +51,7 @@ if [ "$dir" = . ]; then
 else
 	lang=$dir
 fi
-if [ -n "$2" ]; then
+if [ "$#" -eq 2 ]; then
         export MSYSTEM=$2
 fi
 
