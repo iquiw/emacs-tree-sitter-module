@@ -18,6 +18,7 @@
                jsdoc
                json
                lua
+               liquid
                markdown
                markdown-inline
                php

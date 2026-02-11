@@ -79,3 +79,6 @@
 [submodule "gitattributes"]
 	path = gitattributes
 	url = https://github.com/tree-sitter-grammars/tree-sitter-gitattributes
+[submodule "liquid"]
+	path = liquid
+	url = https://github.com/hankthetank27/tree-sitter-liquid
