@@ -82,3 +82,6 @@
 [submodule "liquid"]
 	path = liquid
 	url = https://github.com/hankthetank27/tree-sitter-liquid
+[submodule "doxygen"]
+	path = doxygen
+	url = https://github.com/tree-sitter-grammars/tree-sitter-doxygen

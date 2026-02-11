@@ -7,6 +7,7 @@
                cpp
                css
                dockerfile
+               doxygen
                elixir
                gitattributes
                go
