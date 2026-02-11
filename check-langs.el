@@ -12,6 +12,7 @@
                gitattributes
                go
                gomod
+               gowork
                heex
                html
                java

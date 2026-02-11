@@ -85,3 +85,6 @@
 [submodule "doxygen"]
 	path = doxygen
 	url = https://github.com/tree-sitter-grammars/tree-sitter-doxygen
+[submodule "gowork"]
+	path = gowork
+	url = https://github.com/omertuc/tree-sitter-go-work
