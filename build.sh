@@ -65,6 +65,9 @@ elif [ "$lang" = markdown ]; then
 	dest=../../../dist
 	build "$dir/tree-sitter-markdown" markdown "$dest"
 	build "$dir/tree-sitter-markdown-inline" markdown-inline "$dest"
+elif [ "$lang" = php ]; then
+	dest=../../../dist
+	build "$dir/php" php "$dest"
 else
 	dest=../../dist
 	build "$dir" "$lang" "$dest"

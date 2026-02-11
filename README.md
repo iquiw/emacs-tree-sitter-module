@@ -22,6 +22,8 @@ tree-sitter language module DLLs for Emacs.
 - [json](https://github.com/tree-sitter/tree-sitter-json)
 - [lua](https://github.com/tree-sitter-grammars/tree-sitter-lua)
 - [markdown/-inline](https://github.com/tree-sitter-grammars/tree-sitter-markdown)
+- [php](https://github.com/tree-sitter/tree-sitter-php)
+- [phpdoc](https://github.com/claytonrcarter/tree-sitter-phpdoc)
 - [python](https://github.com/tree-sitter/tree-sitter-python)
 - [ruby](https://github.com/tree-sitter/tree-sitter-ruby)
 - [rust](https://github.com/tree-sitter/tree-sitter-rust)

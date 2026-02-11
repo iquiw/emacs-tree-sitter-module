@@ -19,6 +19,8 @@
                lua
                markdown
                markdown-inline
+               php
+               phpdoc
                python
                ruby
                rust
