@@ -4,6 +4,12 @@ set -euo pipefail
 
 CC=cc
 LDFLAGS='-shared'
+SUFFIX=
+
+case $(uname -s) in
+MINGW*)	SUFFIX=dll ;;
+*)	SUFFIX=so ;;
+esac
 
 build() {
 	local dir=$1
@@ -24,8 +30,8 @@ build() {
 		fi
 	fi
 
-	echo $CC -fPIC $LDFLAGS ./*.o -o "$dest/libtree-sitter-${lang}.dll"
-	$CC -fPIC $LDFLAGS ./*.o -o "$dest/libtree-sitter-${lang}.dll"
+	echo $CC -fPIC $LDFLAGS ./*.o -o "$dest/libtree-sitter-${lang}.${SUFFIX}"
+	$CC -fPIC $LDFLAGS ./*.o -o "$dest/libtree-sitter-${lang}.${SUFFIX}"
 
 	popd >/dev/null
 }
