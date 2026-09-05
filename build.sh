@@ -4,13 +4,19 @@ set -euo pipefail
 
 CC=cc
 LDFLAGS='-shared'
+SUFFIX=
+
+case $(uname -s) in
+MINGW*)	SUFFIX=dll ;;
+*)	SUFFIX=so ;;
+esac
 
 build() {
 	local dir=$1
 	local lang=$2
 	local dest=$3
 
-	pushd "$dir/src" >/dev/null
+	pushd "$dir" >/dev/null
 
 	$CC -fPIC -c -I. parser.c
 
@@ -24,8 +30,8 @@ build() {
 		fi
 	fi
 
-	echo $CC -fPIC $LDFLAGS ./*.o -o "$dest/libtree-sitter-${lang}.dll"
-	$CC -fPIC $LDFLAGS ./*.o -o "$dest/libtree-sitter-${lang}.dll"
+	echo $CC -fPIC $LDFLAGS ./*.o -o "$dest/libtree-sitter-${lang}.${SUFFIX}"
+	$CC -fPIC $LDFLAGS ./*.o -o "$dest/libtree-sitter-${lang}.${SUFFIX}"
 
 	popd >/dev/null
 }
@@ -36,6 +42,8 @@ copy_license() {
 	license="$dir/LICENSE"
 	if [ -f "$dir/LICENSE.md" ]; then
 		license="$dir/LICENSE.md"
+	elif [ ! -f "$license" ]; then
+	     return
 	fi
 	if [ "$dir" = . ]; then
 		cp "$license" "../dist/licenses/LICENSE-$lang"
@@ -51,27 +59,16 @@ if [ "$dir" = . ]; then
 else
 	lang=$dir
 fi
-if [ -n "$2" ]; then
-        export MSYSTEM=$2
+if [ "$#" -eq 2 ]; then
+	subdir=$2
+else
+	subdir=src
 fi
 
 echo -n "Building $lang... "
 
-if [ "$lang" = typescript ]; then
-	dest=../../../dist
-	build "$dir/typescript" typescript "$dest"
-	build "$dir/tsx" tsx "$dest"
-elif [ "$lang" = markdown ]; then
-	dest=../../../dist
-	build "$dir/tree-sitter-markdown" markdown "$dest"
-	build "$dir/tree-sitter-markdown-inline" markdown-inline "$dest"
-elif [ "$lang" = php ]; then
-	dest=../../../dist
-	build "$dir/php" php "$dest"
-else
-	dest=../../dist
-	build "$dir" "$lang" "$dest"
-fi
+dest=$PWD/dist
+build "$dir/$subdir" "$lang" "$dest"
 
 copy_license "$dir"
 

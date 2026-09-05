@@ -1,49 +1,135 @@
 name: Build
 
 on:
-  workflow_run:
-    workflows: [Update]
-    types:
-      - completed
+  push:
+    tags:
+      - 'emacs-31/*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
-  build:
+  extract-manifest:
+    name: Extract module manifest
+    runs-on: ubuntu-latest
+    outputs:
+      repos: ${{ steps.manifest.outputs.repos }}
+      manifest: ${{ steps.manifest.outputs.manifest }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Emacs
+        uses: purcell/setup-emacs@bdc64dc730ae1fcba200bfd52cb1b4cf6159cbe5 # v8.0
+        with:
+          version: 31.1
+
+      - name: Extract manifest
+        id: manifest
+        run: |
+          echo "repos<<EOF" >> "$GITHUB_OUTPUT"
+          emacs --batch -l extract-module-manifest.el --eval '(print-repo-commit)'  >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          echo "manifest<<EOF" >> "$GITHUB_OUTPUT"
+          emacs --batch -l extract-module-manifest.el --eval '(print-repo-commit t)'  >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+  build-netbsd:
+    name: Build tree-sitter modules for NetBSD
+    runs-on: ubuntu-latest
+    needs: extract-manifest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare metadata
+        run: |
+            mkdir -p dist/licenses
+            printf '%s\n' "$REPOS" > repos.txt
+            printf '%s\n' "$MANIFEST" > dist/language-manifest.txt
+        env:
+            REPOS: ${{ needs.extract-manifest.outputs.repos }}
+            MANIFEST: ${{ needs.extract-manifest.outputs.manifest }}
+
+      - name: Checkout modules
+        run: |
+          while read name url revision subdir
+          do
+          	git clone --depth 1 --revision $revision $url $name
+          done < repos.txt
+
+      - name: Build in NetBSD
+        uses: vmactions/netbsd-vm@7f23a491dcc69c34195721ab67934917707f84c7 # v1.4.9
+        with:
+          arch: "x86_64"
+          release: "11.0-microvm"
+          envs: "TAG"
+          run: |
+            PATH=/usr/pkg/bin:$PATH
+            cd $GITHUB_WORKSPACE
+            VERSION=${TAG#emacs-31/}
+            ARCHIVE="emacs31-tree-sitter-module-netbsd-x86_64-$VERSION.tar.gz"
+            while read name url revision subdir
+            do
+            	if [ -n "$subdir" ]; then
+            		bash build.sh "$name" "$subdir"
+            	else
+            		bash build.sh "$name"
+            	fi
+            done < repos.txt
+
+            cd dist
+            tar cvzf "../$ARCHIVE" .
+            sha256 -n "../$ARCHIVE" > "../$ARCHIVE.sha256"
+        env:
+          TAG: ${{ github.ref_name }}
+
+      - name: Upload packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-netbsd
+          path: |
+            emacs31-tree-sitter-module-netbsd-*.tar.gz
+            emacs31-tree-sitter-module-netbsd-*.tar.gz.sha256
+
+
+  build-windows:
+    name: Build tree-sitter modules for Windows
     runs-on: windows-latest
+    needs: extract-manifest
     strategy:
       matrix:
         msystem: ["MINGW64", "UCRT64"]
     env:
       MSYSTEM: ${{ matrix.msystem }}
-    outputs:
-      skip: ${{ steps.tag.outputs.skip-MINGW64 }}
-      tag: ${{ steps.tag.outputs.tag-MINGW64 }}
-      summary: ${{ steps.build.outputs.summary-MINGW64 }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: true
+          persist-credentials: false
 
-      - name: Check if today's tag exists
-        id: tag
+      - name: Prepare metadata
         run: |
-          today="$(date +%Y%m%d)"
-          tag="$(cat tag.txt)"
-          if [ "$tag" = "$today" ]; then
-          	echo "skip-${MSYSTEM}=false" >> "$GITHUB_OUTPUT"
-          	echo "skip=false" >> "$GITHUB_OUTPUT"
-          	echo "tag-${MSYSTEM}=$today" >> "$GITHUB_OUTPUT"
-          	echo "tag=$today" >> "$GITHUB_OUTPUT"
-          else
-          	echo "skip-${MSYSTEM}=true" >> "$GITHUB_OUTPUT"
-          	echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
+            mkdir -p dist/licenses
+            printf '%s\n' "$REPOS" > repos.txt
+            printf '%s\n' "$MANIFEST" > dist/language-manifest.txt
         shell: 'C:/shells/msys2bash.cmd {0}'
+        env:
+          REPOS: ${{ needs.extract-manifest.outputs.repos }}
+          MANIFEST: ${{ needs.extract-manifest.outputs.manifest }}
 
       - name: Install dependencies
-        if: ${{ steps.tag.outputs.skip == 'false' }}
         run: |
+          pacman -Syuu --noconfirm
           if [ "$MSYSTEM" = "MINGW64" ]; then
           	pacman -S --noconfirm --needed --noprogressbar make mingw-w64-x86_64-gcc
           else
@@ -52,8 +138,6 @@ jobs:
         shell: 'C:/shells/msys2bash.cmd {0}'
 
       - name: Build tree-sitter modules
-        if: ${{ steps.tag.outputs.skip == 'false' }}
-        id: build
         run: |
           if [ "$MSYSTEM" = "MINGW64" ]; then
           	export PATH="/mingw64/bin:/C/Program Files/Git/bin:$PATH"
@@ -62,26 +146,27 @@ jobs:
           fi
           cc -v
 
-          mkdir -p dist/licenses
+          while read name url revision subdir
+          do
+          	git clone --depth 1 --revision $revision $url $name
 
-          git submodule foreach bash ../build.sh . "$MSYSTEM"
-          cp language-manifest.txt dist/
-
-          echo "summary-${MSYSTEM}<<EOF" >> "$GITHUB_OUTPUT"
-          cat dist/language-manifest.txt >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          	if [ -n "$subdir" ]; then
+          		bash build.sh "$name" "$subdir"
+          	else
+          		bash build.sh "$name"
+          	fi
+          done < repos.txt
 
           ls -l dist
         shell: 'C:/shells/msys2bash.cmd {0}'
 
       - name: Archive
-        if: ${{ steps.tag.outputs.skip == 'false' }}
-        id: archive
         run: |
+          $VERSION = $env:TAG.Split('/')[-1]
           if ($env:MSYSTEM -eq "MINGW64") {
-              $ARCHIVE = "emacs-tree-sitter-module-${{ steps.tag.outputs.tag }}.zip"
+              $ARCHIVE = "emacs31-tree-sitter-module-$VERSION.zip"
           } else {
-              $ARCHIVE = "emacs-tree-sitter-module-ucrt64-${{ steps.tag.outputs.tag }}.zip"
+              $ARCHIVE = "emacs31-tree-sitter-module-ucrt64-$VERSION.zip"
           }
 
           cd dist
@@ -89,25 +174,31 @@ jobs:
           cd ..
           $ARTIFACT_HASH = (Get-FileHash -Algorithm SHA256 "$ARCHIVE").Hash
           "$ARTIFACT_HASH" | Out-File -Encoding ascii -File "$ARCHIVE.sha256"
-
-          gc $env:GITHUB_OUTPUT
+        env:
+          TAG: ${{ github.ref_name }}
 
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: package-${{ matrix.msystem }}
           path: |
-            emacs-tree-sitter-module-*.zip
-            emacs-tree-sitter-module-*.sha256
+            emacs31-tree-sitter-module-*.zip
+            emacs31-tree-sitter-module-*.sha256
 
   release:
+    name: Release modules
     runs-on: ubuntu-latest
-
-    needs: [build]
-
+    needs: [extract-manifest, build-netbsd, build-windows]
+    permissions:
+      contents: write # required to create release
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Download packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: package-*
           merge-multiple: true
@@ -116,17 +207,13 @@ jobs:
         run: ls -R
 
       - name: Create Release
-        if: ${{ needs.build.outputs.skip == 'false' }}
-        uses: ncipollo/release-action@v1
-        with:
-          commit: '${{ github.sha }}'
-          tag: '${{ needs.build.outputs.tag }}'
-          artifacts: "emacs-tree-sitter-module-*.zip,emacs-tree-sitter-module-*.zip.sha256"
-          artifactContentType: application/octet-stream
-          name: tree-sitter module DLLs ${{ needs.build.outputs.tag }}
-          body: |
-            tree-sitter module DLLs.
-
-            ```
-            ${{ needs.build.outputs.summary }}
-            ```
+        run: |
+          VERSION=${TAG#emacs-31/}
+          gh release create "$TAG" \
+              --title "Emacs-31 tree-sitter module $VERSION" \
+              --notes "$(printf 'tree-sitter module libraries for Emacs-31.\n```\n%s\n```' "$MANIFEST")" \
+              "emacs31-tree-sitter-module-*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          MANIFEST: ${{ needs.extract-manifest.outputs.manifest }}
