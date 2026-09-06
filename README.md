@@ -9,6 +9,7 @@ For the specific Emacs version, see the following branches.
 
 | Branch                                                                      | Release                                                                           |
 | ---                                                                         | ---                                                                               |
+| [Emacs-31](https://github.com/iquiw/emacs-tree-sitter-module/tree/emacs-31) | [Releases](https://github.com/iquiw/emacs-tree-sitter-module/releases?q=emacs-31) |
 | [Emacs-30](https://github.com/iquiw/emacs-tree-sitter-module/tree/emacs-30) | [Releases](https://github.com/iquiw/emacs-tree-sitter-module/releases?q=emacs-30) |
 
 ## Languages
